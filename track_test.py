@@ -38,12 +38,13 @@ def load_img(img0):
         return img, img0
 
 def main():
-    v_path = "/data/zt_data/MOT16/比赛数据/目标跟踪/主办方数据集/测试集/"
+    v_path = "/home/kesci/input/test3454/"
     v_ls = os.listdir(v_path)
     min_box_area = 0.3
     load_model_name = "pt/model_track.pth"
-    gpus = '0, 1'
-    os.environ['CUDA_VISIBLE_DEVICES'] = gpus
+    #gpus = '0, 1'
+    #os.environ['CUDA_VISIBLE_DEVICES'] = gpus
+    gpus = ""
     frame_rate=30
     for i in range(len(v_ls)):
         tracker = JDETracker(gpus, load_model_name, frame_rate=frame_rate)
@@ -56,17 +57,21 @@ def main():
         ret, img0 = cap.read()
         font = cv2.FONT_HERSHEY_SIMPLEX
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        
-        out = cv2.VideoWriter('video/'+ v_ls[i].split('.')[0]+'.avi',fourcc, 20.0, (img0.shape[1],img0.shape[0]))
-        print(ret, video_path)
+        save_path = '/home/kesci/work/video/'+ v_ls[i].split('.')[0]+'.avi'
+        save_txt = '/home/kesci/work/video/'+ v_ls[i].split('.')[0]+'.txt'
+        fw = open(save_txt, 'w')
+        save_format = '{frame},{id},{x1},{y1},{w},{h},1,-1,-1,-1\n'
+        out = cv2.VideoWriter(save_path,fourcc, 20.0, (img0.shape[1],img0.shape[0]))
+        print("read video", video_path)
         while(ret):
             ret, img0 = cap.read()
-            # try:
-            if True:
+            try:
+            #if True:
                 shape = img0.shape
                 img,img0 = load_img(img0)
                 # run tracking
-                blob = torch.from_numpy(img).cuda().unsqueeze(0)
+                #blob = torch.from_numpy(img).cuda().unsqueeze(0)
+                blob = torch.from_numpy(img).unsqueeze(0)
                 online_targets = tracker.update(blob, img0)
                 online_tlwhs = []
                 online_ids = []
@@ -84,12 +89,19 @@ def main():
                             continue
                         x1, y1, w, h = tlwh
                         x2, y2 = x1 + w, y1 + h
-                        print('box', x1,y1,x2,y2)
+                        #print('box', x1,y1,x2,y2)
                         cv2.rectangle(img0, (int(x1),int(y1)), (int(x2),int(y2)), (0,255,0), 2)
+                        line = save_format.format(frame=frame_id, id=track_id, x1=x1, y1=y1, x2=x2, y2=y2, w=w, h=h)
+                        fw.write(line)
                         cv2.putText(img0, str(track_id), (int(x1),int(y1)), font, 1.2, (255, 255, 255), 2)
                 out.write(img0)
                 frame_id += 1
+            except:
+                print(ret, video_path)
+        print("save path is", save_path)
+            
     return 0
+
 
 if __name__ == '__main__':
     main()
